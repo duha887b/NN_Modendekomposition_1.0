@@ -201,7 +201,7 @@ end
 
 
 %% Test Network  - step 4
-dlnet = vgg_5modes_d_TL2;
+%dlnet = vgg_5modes_d_TL2;
 % transfer data to dlarray
 dlTest = dlarray(XTest,'SSCB');
 % use command "predict"
