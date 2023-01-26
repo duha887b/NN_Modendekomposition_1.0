@@ -6,7 +6,7 @@ close all
 
 load("networks.mat");
 %  2. define the input and output size for neural network
-Nmodes = 5; % 3 oder 5
+Nmodes = 3; % 3 oder 5
 moreData = 0; % 0= 10000 , 1=50000  Trainingsdaten
 
 if Nmodes == 3 
@@ -18,10 +18,17 @@ if Nmodes == 5
     end
     if moreData == 1
         load("mmf_Traingsdata_5modes_50000.mat");
+<<<<<<< Updated upstream
+       
     end
 end
 
 netarc = 1; %1:VGG 0:MLP
+=======
+    end
+end
+
+>>>>>>> Stashed changes
 
 ImageSize = 32;
 outputsize = Nmodes*2-1;
@@ -30,19 +37,39 @@ inputSize = [32 32 1];
 %% create MLP neural network - step 3 
 
 Layers_MLP = [
+<<<<<<< Updated upstream
 
     imageInputLayer(inputSize,Normalization="none" )
 
+=======
+    imageInputLayer(inputSize,Normalization="none" )
+>>>>>>> Stashed changes
     fullyConnectedLayer(inputsize,'Name','fc1')
     leakyReluLayer('Name', 'relu1')
     fullyConnectedLayer(inputsize,'Name','fc2')
     leakyReluLayer('Name','relu2')
     fullyConnectedLayer(outputsize,"Name","fc_output")
+<<<<<<< Updated upstream
 
     sigmoidLayer("Name",'out')
    
 ];
 
+=======
+    sigmoidLayer("Name",'out')
+   
+
+];
+% convert to a layer graph
+lgraph = layerGraph(Layers_MLP);
+%add output
+% sig = sigmoidLayer("Name",'out_1');
+% lgraph = addLayers(lgraph,sig);
+% lgraph = connectLayers(lgraph,"fc_output",'out_1');
+% Create a dlnetwork object from the layer graph.
+dlnet = dlnetwork(lgraph);
+%analyzeNetwork(dlnet);
+>>>>>>> Stashed changes
 %% create VGG neural network - step 7
 Layers_VGG= [
     
@@ -67,13 +94,20 @@ Layers_VGG= [
     maxPooling2dLayer(2,"Stride",2,'Name',"pooling3")
 
     fullyConnectedLayer(256,'Name',"fc1")
+<<<<<<< Updated upstream
+    dropoutLayer(0.5,'Name',"drop1")
     fullyConnectedLayer(128,'Name',"fc2")
+    dropoutLayer(0.5,'Name',"drop2")
+=======
+    fullyConnectedLayer(128,'Name',"fc2")
+>>>>>>> Stashed changes
     fullyConnectedLayer(outputsize,'Name',"fc_output")
 
     sigmoidLayer("Name",'out')
 ];
 
 %analyzeNetwork(Layers_VGG);
+<<<<<<< Updated upstream
 %% use command dlnetwork Layers_VGG oder Layers_MLP ()
 
 if netarc == 0
@@ -82,28 +116,42 @@ end
 if netarc == 1
     lgraph = layerGraph(Layers_VGG);
 end
+=======
+% use command dlnetwork()
+lgraph = layerGraph(Layers_VGG);
+>>>>>>> Stashed changes
 dlnet = dlnetwork(lgraph);
 
 %% learnable parameters transfer  - step 8 & 9
 % use Transfer Learning
-old_dlnet = vgg_3modes; %von welchem netz soll abgeleitet werden 
+<<<<<<< Updated upstream
+old_dlnet = vgg_5modes_d_TL1;             %von welchem netz soll abgeleitet werden 
 old_LayerArray = old_dlnet.Layers;
 LayerArray = dlnet.Layers;
-
+valueoldex = table2array(old_dlnet.Learnables(:,1));
+valcount = 2;
 for iL=2: size(LayerArray,1)-1
     oldProp =  old_LayerArray(iL);
     newProp = LayerArray(iL);
     if newProp.Name == oldProp.Name
-        oldLearn = cell2mat(old_dlnet.Learnables.Value(iL-1));
-        newLearn = cell2mat(dlnet.Learnables.Value(iL-1));
         
-        if size(newLearn)~=0
-            if size(oldLearn) == size(newLearn)
-                dlnet.Learnables.Value(iL) = old_dlnet.Learnables.Value(iL);
+        if newProp.Name == valueoldex(valcount)
+            oldLearn = cell2mat(old_dlnet.Learnables.Value(valcount));
+            newLearn = cell2mat(dlnet.Learnables.Value(valcount));
+            
+            if size(newLearn)~=0
+                if size(oldLearn) == size(newLearn)
+                    dlnet.Learnables.Value(valcount) = old_dlnet.Learnables.Value(valcount);
+                    dlnet.Learnables.Value(valcount-1) = old_dlnet.Learnables.Value(valcount-1);
+                    disp(valcount);
+                end
             end
+            valcount = valcount +2;
         end
     end
 end
+=======
+>>>>>>> Stashed changes
 
 
 %% Training network  - step 3
@@ -121,7 +169,11 @@ numIterationsPerEpoch = floor(numObservations./miniBatchSize);
 
 executionEnvironment = "parallel";
 
+<<<<<<< Updated upstream
+ValidationFrequenz = 50;
+=======
 ValidationFrequenz = 2;
+>>>>>>> Stashed changes
 ValCount = 0;
 dlValid = dlarray(XValid,'SSCB');
 
@@ -157,7 +209,11 @@ for epoch = 1:numEpochs
         XTmp = XTrain(:,:,:,idx);
         
         
+<<<<<<< Updated upstream
+        Y = zeros(miniBatchSize,outputsize,"double");
+=======
         Y = zeros(miniBatchSize,5,"double");
+>>>>>>> Stashed changes
         Y = YTrain(idx,:);
         Y = Y';
 
@@ -183,7 +239,11 @@ for epoch = 1:numEpochs
             D = duration(0,0,toc(start),'Format','hh:mm:ss');
             addpoints(lineLossTrain,iteration,double(gather(extractdata(loss))))
             addpoints(lineLossValid,iteration,double(gather(extractdata(ValLoss))))
+<<<<<<< Updated upstream
+            title("Epoch: " + epoch + ", Elapsed: " + string(D) + ", TrainingLoss: " + num2str(double(gather(extractdata(loss)))) + ", ValidationLoss: " + num2str(double(gather(extractdata(ValLoss)))));
+=======
             title("Epoch: " + epoch + ", Elapsed: " + string(D) + ", Loss: " + num2str(double(gather(extractdata(loss)))));
+>>>>>>> Stashed changes
             drawnow
         end
     end
@@ -191,6 +251,10 @@ end
 
 
 %% Test Network  - step 4
+<<<<<<< Updated upstream
+dlnet = mlp_3modes;
+=======
+>>>>>>> Stashed changes
 % transfer data to dlarray
 dlTest = dlarray(XTest,'SSCB');
 % use command "predict"
@@ -214,8 +278,12 @@ end
 
 
 for itc=1:size(XTest,4)
+<<<<<<< Updated upstream
+    corr_gt_rc(itc) = corr2(Image_data_complex(:,:,1,itc),XTest(:,:,1,itc));    % calculate Correlation between the ground truth and reconstruction                         
+=======
     corr_gt_rc(itc) = corr2(Image_data_complex(:,:,1,itc),XTest(:,:,1,itc));    % calculate Correlation between the ground truth and reconstruction
     %std_t_t(itc) = std2(Image_data_complex(:,:,1,itc));                         
+>>>>>>> Stashed changes
 end
 
 %std der ergebnisse
@@ -223,15 +291,27 @@ std_corr = std(corr_gt_rc);
 mean_corr = mean(corr_gt_rc);
 
 % calulate relative error of ampplitude and phase
+<<<<<<< Updated upstream
+phase_rel = abs(mean(YTest(:,Nmodes+1:end)) - abs(mean(YPred(:,Nmodes+1:end)))./abs(mean(YTest(:,Nmodes+1:end)));
+ampli_rel = abs(mean((YTest(:,1:Nmodes)))) - abs(mean((YPred(:,1:Nmodes))))./abs(mean(YTest(:,1:Nmodes)));
+
+mean_phase = mean(phase_rel);
+mean_ampli = mean(ampli_rel);
+=======
 phase_rel = YTest(:,Nmodes+1:end) - YPred(:,Nmodes+1:end);
 ampli_rel = YTest(:,1:Nmodes) - YPred(:,1:Nmodes);
 mean_phase = mean(mean(phase_rel));
 mean_ampli = mean(mean(ampli_rel));
+>>>>>>> Stashed changes
 
 %display values
 disp("Mean_corr: " + num2str(mean_corr) + "  Std: " + num2str(std_corr) + ...
     "  Mean_amp: " + num2str(mean_ampli) + "  Mean_phase: " + num2str(mean_phase))
+<<<<<<< Updated upstream
 
+=======
+ 
+>>>>>>> Stashed changes
 
 % plot()
 figure
@@ -242,12 +322,27 @@ subplot(1,1,1), boxchart(corr_gt_rc),title('Correlation') ;
 
 %% save model
 
+<<<<<<< Updated upstream
 %vgg_5modes = dlnet;
 %vgg_3modes = dlnet;
 %mlp_3modes = dlnet;
 %mlp_5modes = dlnet;
-vgg_5modes_TL1 = dlnet;
+%vgg_5modes_TL1 = dlnet;
+%vgg_5modes_TL2 = dlnet;rrrrrrr
+%vgg_3modes_d = dlnet;
+%vgg_5modes_d = dlnet;
+%vgg_5modes_d_TL1 = dlnet;
+
+%vgg_5modes_d_TL2 = dlnet;
 
 
-save("networks.mat",'mlp_3modes','mlp_5modes','vgg_3modes','vgg_5modes','vgg_5modes_TL1');
+save("networks.mat",'mlp_3modes','mlp_5modes','vgg_3modes','vgg_5modes','vgg_5modes_TL1','vgg_5modes_TL2', ...
+    'vgg_3modes_d','vgg_5modes_d','vgg_5modes_d_TL1','vgg_5modes_d_TL2');
+=======
+vgg_3modes = dlnet;
+%mlp_3modes = dlnet;
+%mlp_5modes = dlnet;
+
+save("networks.mat",'mlp_3modes','mlp_5modes','vgg_3modes');
+>>>>>>> Stashed changes
 

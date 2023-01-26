@@ -7,7 +7,7 @@ close all
 load("networks.mat");
 %  2. define the input and output size for neural network
 Nmodes = 5; % 3 oder 5
-moreData = 1; % 0= 10000 , 1=50000  Trainingsdaten
+moreData = 0; % 0= 10000 , 1=50000  Trainingsdaten
 
 if Nmodes == 3 
     load("mmf_Traingsdata_3modes.mat");     %  1. load the dataset
@@ -18,6 +18,7 @@ if Nmodes == 5
     end
     if moreData == 1
         load("mmf_Traingsdata_5modes_50000.mat");
+       
     end
 end
 
@@ -67,7 +68,9 @@ Layers_VGG= [
     maxPooling2dLayer(2,"Stride",2,'Name',"pooling3")
 
     fullyConnectedLayer(256,'Name',"fc1")
+    dropoutLayer(0.5,'Name',"drop1")
     fullyConnectedLayer(128,'Name',"fc2")
+    dropoutLayer(0.5,'Name',"drop2")
     fullyConnectedLayer(outputsize,'Name',"fc_output")
 
     sigmoidLayer("Name",'out')
@@ -86,21 +89,28 @@ dlnet = dlnetwork(lgraph);
 
 %% learnable parameters transfer  - step 8 & 9
 % use Transfer Learning
-old_dlnet = vgg_5modes_TL1; %von welchem netz soll abgeleitet werden 
+old_dlnet = vgg_5modes_d_TL1;             %von welchem netz soll abgeleitet werden 
 old_LayerArray = old_dlnet.Layers;
 LayerArray = dlnet.Layers;
-
+valueoldex = table2array(old_dlnet.Learnables(:,1));
+valcount = 2;
 for iL=2: size(LayerArray,1)-1
     oldProp =  old_LayerArray(iL);
     newProp = LayerArray(iL);
     if newProp.Name == oldProp.Name
-        oldLearn = cell2mat(old_dlnet.Learnables.Value(iL-1));
-        newLearn = cell2mat(dlnet.Learnables.Value(iL-1));
         
-        if size(newLearn)~=0
-            if size(oldLearn) == size(newLearn)
-                dlnet.Learnables.Value(iL-1) = old_dlnet.Learnables.Value(iL-1);
+        if newProp.Name == valueoldex(valcount)
+            oldLearn = cell2mat(old_dlnet.Learnables.Value(valcount));
+            newLearn = cell2mat(dlnet.Learnables.Value(valcount));
+            
+            if size(newLearn)~=0
+                if size(oldLearn) == size(newLearn)
+                    dlnet.Learnables.Value(valcount) = old_dlnet.Learnables.Value(valcount);
+                    dlnet.Learnables.Value(valcount-1) = old_dlnet.Learnables.Value(valcount-1);
+                    disp(valcount);
+                end
             end
+            valcount = valcount +2;
         end
     end
 end
@@ -121,7 +131,7 @@ numIterationsPerEpoch = floor(numObservations./miniBatchSize);
 
 executionEnvironment = "parallel";
 
-ValidationFrequenz = 2;
+ValidationFrequenz = 50;
 ValCount = 0;
 dlValid = dlarray(XValid,'SSCB');
 
@@ -157,7 +167,7 @@ for epoch = 1:numEpochs
         XTmp = XTrain(:,:,:,idx);
         
         
-        Y = zeros(miniBatchSize,5,"double");
+        Y = zeros(miniBatchSize,outputsize,"double");
         Y = YTrain(idx,:);
         Y = Y';
 
@@ -183,7 +193,7 @@ for epoch = 1:numEpochs
             D = duration(0,0,toc(start),'Format','hh:mm:ss');
             addpoints(lineLossTrain,iteration,double(gather(extractdata(loss))))
             addpoints(lineLossValid,iteration,double(gather(extractdata(ValLoss))))
-            title("Epoch: " + epoch + ", Elapsed: " + string(D) + ", Loss: " + num2str(double(gather(extractdata(loss)))));
+            title("Epoch: " + epoch + ", Elapsed: " + string(D) + ", TrainingLoss: " + num2str(double(gather(extractdata(loss)))) + ", ValidationLoss: " + num2str(double(gather(extractdata(ValLoss)))));
             drawnow
         end
     end
@@ -191,6 +201,7 @@ end
 
 
 %% Test Network  - step 4
+dlnet = vgg_5modes_d_TL2;
 % transfer data to dlarray
 dlTest = dlarray(XTest,'SSCB');
 % use command "predict"
@@ -214,8 +225,7 @@ end
 
 
 for itc=1:size(XTest,4)
-    corr_gt_rc(itc) = corr2(Image_data_complex(:,:,1,itc),XTest(:,:,1,itc));    % calculate Correlation between the ground truth and reconstruction
-    %std_t_t(itc) = std2(Image_data_complex(:,:,1,itc));                         
+    corr_gt_rc(itc) = corr2(Image_data_complex(:,:,1,itc),XTest(:,:,1,itc));    % calculate Correlation between the ground truth and reconstruction                         
 end
 
 %std der ergebnisse
@@ -223,10 +233,11 @@ std_corr = std(corr_gt_rc);
 mean_corr = mean(corr_gt_rc);
 
 % calulate relative error of ampplitude and phase
-phase_rel = YTest(:,Nmodes+1:end) - YPred(:,Nmodes+1:end);
-ampli_rel = YTest(:,1:Nmodes) - YPred(:,1:Nmodes);
-mean_phase = mean(mean(phase_rel));
-mean_ampli = mean(mean(ampli_rel));
+phase_rel = abs(mean(YTest(:,Nmodes+1:end)) - mean(YPred(:,Nmodes+1:end)))./abs(mean(YTest(:,Nmodes+1:end)));
+ampli_rel = abs(mean((YTest(:,1:Nmodes))) - mean((YPred(:,1:Nmodes))))./abs(mean(YTest(:,1:Nmodes)));
+
+mean_phase = mean(phase_rel);
+mean_ampli = mean(ampli_rel);
 
 %display values
 disp("Mean_corr: " + num2str(mean_corr) + "  Std: " + num2str(std_corr) + ...
@@ -247,8 +258,14 @@ subplot(1,1,1), boxchart(corr_gt_rc),title('Correlation') ;
 %mlp_3modes = dlnet;
 %mlp_5modes = dlnet;
 %vgg_5modes_TL1 = dlnet;
-vgg_5modes_TL2 = dlnet;
+%vgg_5modes_TL2 = dlnet;rrrrrrr
+%vgg_3modes_d = dlnet;
+%vgg_5modes_d = dlnet;
+%vgg_5modes_d_TL1 = dlnet;
+
+%vgg_5modes_d_TL2 = dlnet;
 
 
-save("networks.mat",'mlp_3modes','mlp_5modes','vgg_3modes','vgg_5modes','vgg_5modes_TL1','vgg_5modes_TL2');
+save("networks.mat",'mlp_3modes','mlp_5modes','vgg_3modes','vgg_5modes','vgg_5modes_TL1','vgg_5modes_TL2', ...
+    'vgg_3modes_d','vgg_5modes_d','vgg_5modes_d_TL1','vgg_5modes_d_TL2');
 
